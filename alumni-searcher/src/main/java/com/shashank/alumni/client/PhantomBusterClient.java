@@ -40,7 +40,7 @@ public class PhantomBusterClient {
         headers.set("X-Phantombuster-Key", apiKey);
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        // Map arguments based on Phantom expectations
+
         String searchStr = request.getUniversity();
         if (request.getDesignation() != null && !request.getDesignation().isEmpty()) {
             searchStr += " " + request.getDesignation();
@@ -79,7 +79,7 @@ public class PhantomBusterClient {
             JsonNode responseNode = objectMapper.readTree(launchResponse.getBody());
             String containerId = responseNode.path("containerId").asText();
             
-            // Wait for agent to finish (Polling - simple implementation)
+        
             JsonNode outputNode = pollForOutput(containerId, headers);
             
             return parseAlumniData(outputNode, headers, containerId);
@@ -111,7 +111,7 @@ public class PhantomBusterClient {
                     if (exitCode != 0) {
                         System.err.println("PhantomBuster finished with error code " + exitCode);
                         System.err.println("Raw output logs: " + rawBody);
-                        // We continue anyway, as PhantomBuster might have saved partial results to S3 before failing
+                    
                     }
                     
                     JsonNode outputNode = objectMapper.readTree(rawBody);
@@ -130,8 +130,7 @@ public class PhantomBusterClient {
         if (outputNode != null && outputNode.path("output").isTextual()) {
             String logs = outputNode.path("output").asText();
             
-            // Extract the S3 JSON URL from the logs
-            // Example: [done_] JSON saved at https://phantombuster.s3.amazonaws.com/TTfSACaKGDA/IsVJbiouQtpReJba0tTJbQ/result.json
+
             java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("https://[a-zA-Z0-9_./-]+\\.s3\\.amazonaws\\.com/[a-zA-Z0-9_./-]+/result\\.json");
             java.util.regex.Matcher matcher = pattern.matcher(logs);
             
@@ -160,7 +159,7 @@ public class PhantomBusterClient {
                                 } else if (yearNode.isTextual() && !yearNode.asText().isEmpty()) {
                                     try {
                                         String yearStr = yearNode.asText();
-                                        // Handle formats like "2016 - 2020"
+        
                                         if (yearStr.contains("-")) {
                                             yearStr = yearStr.substring(yearStr.indexOf("-") + 1).trim();
                                         }
@@ -179,9 +178,6 @@ public class PhantomBusterClient {
             } else {
                 System.err.println("No JSON result URL found in PhantomBuster logs: \n" + logs);
                 
-                // FALLBACK: If we've already retrieved all results, PhantomBuster doesn't provide the historic JSON link via the standard container API.
-                // In a production scenario, we would store these in our local database `AlumniRepository` during the first search,
-                // and fetch them from the database instead. For now, since Phantom doesn't give us the new link, return empty.
                 if (logs.contains("We've already retrieved all results from that search")) {
                     System.out.println("No new PhantomBuster agent results created because this exact search was already performed.");
                     System.out.println("Please check your database for the previously saved alumni from this search query.");
